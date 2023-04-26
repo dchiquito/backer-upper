@@ -1,5 +1,7 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+
+use crate::config::{write_config_file, Config};
 
 fn run(command: &mut Command) {
     let output = command.output().unwrap();
@@ -9,9 +11,9 @@ fn run(command: &mut Command) {
     }
 }
 
-pub fn backup(globs: &[String], output: &Option<PathBuf>) -> Result<(), clap::error::Error> {
-    println!("{:?}", globs);
-    let output_file = output
+pub fn backup(config: &Config) -> Result<(), clap::error::Error> {
+    let output_file = config
+        .output
         .as_ref()
         .map(|pb| {
             pb.clone()
@@ -20,7 +22,9 @@ pub fn backup(globs: &[String], output: &Option<PathBuf>) -> Result<(), clap::er
                 .expect("error parsing output string")
         })
         .unwrap_or("/tmp/backup.tar".to_string());
-    let files: Vec<PathBuf> = globs
+    write_config_file(config, Path::new("/tmp/backup.yml"));
+    let files: Vec<PathBuf> = config
+        .globs
         .iter()
         .flat_map(|g| glob::glob(g).unwrap())
         .map(Result::unwrap)
@@ -35,7 +39,6 @@ pub fn backup(globs: &[String], output: &Option<PathBuf>) -> Result<(), clap::er
             &output_file,
         ])
         .args(&files));
-    // TODO serialize backup.yml
     run(Command::new("touch").arg("/tmp/backup.yml"));
     run(Command::new("tar").args([
         "--absolute-names",

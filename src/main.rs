@@ -1,7 +1,7 @@
 use clap::Parser;
 
 mod commands;
-// mod context;
+mod config;
 
 // #[cfg(test)]
 // mod test;

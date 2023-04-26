@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
+
+use crate::config::Config;
 // use sudo::with_env;
 
 // use crate::context::Context;
@@ -30,7 +32,14 @@ impl Cli {
         // }
         // let ctx = Context::new(&self.repo);
         match &self.commands {
-            Commands::Backup { globs, output } => backup::backup(globs, output),
+            Commands::Backup { globs, output, key } => {
+                let config = Config {
+                    globs: globs.to_vec(),
+                    output: output.clone(),
+                    key: key.clone(),
+                };
+                backup::backup(&config)
+            }
             Commands::Restore { file } => restore::restore(file),
             Commands::Sync { file } => sync::sync(file),
         }
@@ -47,6 +56,8 @@ pub enum Commands {
         /// The repository the configuration files are stored in
         #[arg(short, long)]
         output: Option<PathBuf>,
+        #[arg(short, long)]
+        key: Option<String>,
     },
     Restore {
         file: PathBuf,
