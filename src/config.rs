@@ -10,11 +10,11 @@ pub struct Config {
 }
 
 pub fn read_config_file(file: &Path) -> Config {
-    let reader = std::fs::File::open(file).expect("error reading config file");
-    serde_yaml::from_reader(reader).expect("error parsing config file")
+    let contents = std::fs::read_to_string(file).expect("error reading config file");
+    toml::from_str(&contents).expect("error deserializing config file")
 }
 
 pub fn write_config_file(config: &Config, file: &Path) {
-    let writer = std::fs::File::open(file).expect("error opening config file");
-    serde_yaml::to_writer(writer, config).expect("error writer config file")
+    let contents = toml::to_string(config).expect("error serializing config file");
+    std::fs::write(file, contents).expect("error writing config file");
 }
