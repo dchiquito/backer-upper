@@ -1,20 +1,44 @@
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+/// A configuration for a single backup. A config file can have multiple Configs.
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub globs: Vec<String>,
     pub output: Option<PathBuf>,
     pub key: Option<String>,
 }
 
-pub fn read_config_file(file: &Path) -> Config {
+/// A collection of Configs. This is the format used for saving configs to a file.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ConfigCollection {
+    #[serde(flatten)]
+    pub configs: HashMap<String, Config>,
+}
+
+impl ConfigCollection {
+    pub fn new() -> ConfigCollection {
+        ConfigCollection {
+            configs: HashMap::new(),
+        }
+    }
+    pub fn from_config(name: &str, config: Config) -> ConfigCollection {
+        let mut config_collection = ConfigCollection::new();
+        config_collection.configs.insert(name.to_string(), config);
+        config_collection
+    }
+}
+
+pub fn read_config_file(file: &Path) -> ConfigCollection {
     let contents = std::fs::read_to_string(file).expect("error reading config file");
     toml::from_str(&contents).expect("error deserializing config file")
 }
 
-pub fn write_config_file(config: &Config, file: &Path) {
+pub fn write_config_file(config: &ConfigCollection, file: &Path) {
     let contents = toml::to_string(config).expect("error serializing config file");
     std::fs::write(file, contents).expect("error writing config file");
 }

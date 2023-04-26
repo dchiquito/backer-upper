@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::config::{write_config_file, Config};
+use crate::config::{write_config_file, Config, ConfigCollection};
 
 fn run(command: &mut Command) {
     let output = command.output().unwrap();
@@ -38,7 +38,8 @@ pub fn backup(config: &Config) -> Result<(), clap::error::Error> {
             &output_file,
         ])
         .args(&files));
-    write_config_file(config, Path::new("/tmp/backup.toml"));
+    let configs = ConfigCollection::from_config("backup", config.clone());
+    write_config_file(&configs, Path::new("/tmp/backup.toml"));
     run(Command::new("tar").args([
         "--absolute-names",
         "--transform=s|^.*$|backup.toml|",
