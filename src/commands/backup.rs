@@ -21,7 +21,7 @@ pub fn backup(config: &Config) -> Result<(), clap::error::Error> {
                 .into_string()
                 .expect("error parsing output string")
         })
-        .unwrap_or("/tmp/backup.tar".to_string());
+        .unwrap_or("/tmp/backup.tar.gz".to_string());
     let files: Vec<PathBuf> = config
         .globs
         .iter()
@@ -31,23 +31,8 @@ pub fn backup(config: &Config) -> Result<(), clap::error::Error> {
         .map(Result::unwrap)
         .collect();
     run(Command::new("tar")
-        .args([
-            "--absolute-names",
-            "--transform=s|^|root|",
-            "-cf",
-            &output_file,
-        ])
+        .args(["--absolute-names", "-czf", &output_file])
         .args(&files));
-    let configs = ConfigCollection::from_config("backup", config.clone());
-    write_config_file(&configs, Path::new("/tmp/backup.toml"));
-    run(Command::new("tar").args([
-        "--absolute-names",
-        "--transform=s|^.*$|backup.toml|",
-        "-rf",
-        &output_file,
-        "/tmp/backup.toml",
-    ]));
-    run(Command::new("gzip").arg("-f").arg(&output_file));
     Ok(())
 }
 
