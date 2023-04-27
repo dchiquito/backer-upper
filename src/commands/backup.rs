@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
-use crate::config::{write_config_file, Config, ConfigCollection};
+use crate::config::Config;
 
 fn run(command: &mut Command) {
     let output = command.output().unwrap();
@@ -34,14 +34,4 @@ pub fn backup(config: &Config) -> Result<(), clap::error::Error> {
         .args(["--absolute-names", "-czf", &output_file])
         .args(&files));
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_foo() {
-        assert!(false);
-    }
 }

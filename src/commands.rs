@@ -6,9 +6,9 @@ use crate::config::Config;
 
 // use crate::context::Context;
 
-mod backup;
-mod restore;
-mod sync;
+pub mod backup;
+pub mod restore;
+pub mod sync;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -40,7 +40,7 @@ impl Cli {
                 };
                 backup::backup(&config)
             }
-            Commands::Restore { file } => restore::restore(file),
+            Commands::Restore { file, globs, key } => restore::restore(file, globs, key),
             Commands::Sync { file } => sync::sync(file),
         }
     }
@@ -61,6 +61,9 @@ pub enum Commands {
     },
     Restore {
         file: PathBuf,
+        globs: Option<Vec<String>>,
+        #[arg(short, long)]
+        key: Option<String>,
     },
     Sync {
         file: PathBuf,
