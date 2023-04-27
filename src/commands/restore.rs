@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 use clap::error::Error;
@@ -13,21 +13,10 @@ fn run(command: &mut Command) {
 
 pub fn restore(
     backup: &Path,
-    globs: &Option<Vec<String>>,
+    files: &Option<Vec<String>>,
     key: &Option<String>,
 ) -> Result<(), Error> {
-    let files: Vec<PathBuf> = globs
-        .clone()
-        .map(|globs| {
-            globs
-                .iter()
-                .flat_map(|g| glob::glob(g).expect("error parsing glob"))
-                .map(Result::unwrap)
-                .map(std::fs::canonicalize)
-                .map(Result::unwrap)
-                .collect()
-        })
-        .unwrap_or(vec![]);
+    let files = files.clone().unwrap_or(vec![]);
     run(Command::new("tar")
         .args([
             "--absolute-names",
