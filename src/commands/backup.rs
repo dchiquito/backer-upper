@@ -12,16 +12,27 @@ fn run(command: &mut Command) {
 }
 
 pub fn backup(config: &Config) -> Result<(), clap::error::Error> {
-    let output_file = config
-        .output
-        .as_ref()
-        .map(|pb| {
-            pb.clone()
-                .into_os_string()
-                .into_string()
-                .expect("error parsing output string")
+    let output_option = config.output.as_ref().map(|pb| {
+        pb.clone()
+            .into_os_string()
+            .into_string()
+            .expect("error parsing output string")
+    });
+    let tar_gz_file = &output_option
+        .clone()
+        .map(|output| {
+            if config.gpg_id.is_none() {
+                output
+            } else {
+                "/tmp/backup.tar.gz".to_string()
+            }
         })
         .unwrap_or("/tmp/backup.tar.gz".to_string());
+    let output_file: &str = &output_option.unwrap_or(if config.gpg_id.is_some() {
+        "/tmp/backup.tar.gz.gpg".to_string()
+    } else {
+        "/tmp/backup.tar.gz".to_string()
+    });
     let files: Vec<PathBuf> = config
         .globs
         .iter()
@@ -31,7 +42,18 @@ pub fn backup(config: &Config) -> Result<(), clap::error::Error> {
         .map(Result::unwrap)
         .collect();
     run(Command::new("tar")
-        .args(["--absolute-names", "-czf", &output_file])
+        .args(["--absolute-names", "-czf", tar_gz_file])
         .args(&files));
+    if config.gpg_id.is_some() {
+        run(Command::new("gpg").args([
+            "--encrypt",
+            "--yes",
+            "--output",
+            output_file,
+            "--recipient",
+            config.gpg_id.as_ref().unwrap(),
+            tar_gz_file,
+        ]));
+    }
     Ok(())
 }

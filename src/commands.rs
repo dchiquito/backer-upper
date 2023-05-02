@@ -32,15 +32,23 @@ impl Cli {
         // }
         // let ctx = Context::new(&self.repo);
         match &self.commands {
-            Commands::Backup { globs, output, key } => {
+            Commands::Backup {
+                globs,
+                output,
+                gpg_id,
+            } => {
                 let config = Config {
                     globs: globs.to_vec(),
                     output: output.clone(),
-                    key: key.clone(),
+                    gpg_id: gpg_id.clone(),
                 };
                 backup::backup(&config)
             }
-            Commands::Restore { file, globs, key } => restore::restore(file, globs, key),
+            Commands::Restore {
+                file,
+                globs,
+                gpg_id,
+            } => restore::restore(file, globs, gpg_id),
             Commands::Sync { file } => sync::sync(file),
         }
     }
@@ -57,13 +65,13 @@ pub enum Commands {
         #[arg(short, long)]
         output: Option<PathBuf>,
         #[arg(short, long)]
-        key: Option<String>,
+        gpg_id: Option<String>,
     },
     Restore {
         file: PathBuf,
         globs: Option<Vec<String>>,
         #[arg(short, long)]
-        key: Option<String>,
+        gpg_id: Option<String>,
     },
     Sync {
         file: PathBuf,

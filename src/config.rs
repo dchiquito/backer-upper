@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub globs: Vec<String>,
     pub output: Option<PathBuf>,
-    pub key: Option<String>,
+    pub gpg_id: Option<String>,
 }
 
 /// A collection of Configs. This is the format used for saving configs to a file.
