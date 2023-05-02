@@ -1,11 +1,14 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::config::Config;
 use crate::utils::run;
 
-pub fn backup(config: &Config) -> Result<(), clap::error::Error> {
-    let output_option = config.output.as_ref().map(|pb| {
+pub fn backup(
+    globs: &Vec<String>,
+    output: &Option<PathBuf>,
+    gpg_id: &Option<String>,
+) -> Result<(), clap::error::Error> {
+    let output_option = output.as_ref().map(|pb| {
         pb.clone()
             .into_os_string()
             .into_string()
@@ -14,20 +17,19 @@ pub fn backup(config: &Config) -> Result<(), clap::error::Error> {
     let tar_gz_file = &output_option
         .clone()
         .map(|output| {
-            if config.gpg_id.is_none() {
+            if gpg_id.is_none() {
                 output
             } else {
                 "/tmp/backup.tar.gz".to_string()
             }
         })
         .unwrap_or("/tmp/backup.tar.gz".to_string());
-    let output_file: &str = &output_option.unwrap_or(if config.gpg_id.is_some() {
+    let output_file: &str = &output_option.unwrap_or(if gpg_id.is_some() {
         "/tmp/backup.tar.gz.gpg".to_string()
     } else {
         "/tmp/backup.tar.gz".to_string()
     });
-    let files: Vec<PathBuf> = config
-        .globs
+    let files: Vec<PathBuf> = globs
         .iter()
         .flat_map(|g| glob::glob(g).expect("error parsing glob"))
         .map(Result::unwrap)
@@ -37,14 +39,14 @@ pub fn backup(config: &Config) -> Result<(), clap::error::Error> {
     run(Command::new("tar")
         .args(["--absolute-names", "-czf", tar_gz_file])
         .args(&files));
-    if config.gpg_id.is_some() {
+    if gpg_id.is_some() {
         run(Command::new("gpg").args([
             "--encrypt",
             "--yes",
             "--output",
             output_file,
             "--recipient",
-            config.gpg_id.as_ref().unwrap(),
+            gpg_id.as_ref().unwrap(),
             tar_gz_file,
         ]));
     }

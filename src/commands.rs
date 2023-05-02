@@ -1,11 +1,6 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-use crate::config::Config;
-// use sudo::with_env;
-
-// use crate::context::Context;
-
 pub mod backup;
 pub mod restore;
 pub mod sync;
@@ -36,14 +31,7 @@ impl Cli {
                 globs,
                 output,
                 gpg_id,
-            } => {
-                let config = Config {
-                    globs: globs.to_vec(),
-                    output: output.clone(),
-                    gpg_id: gpg_id.clone(),
-                };
-                backup::backup(&config)
-            }
+            } => backup::backup(globs, output, gpg_id),
             Commands::Restore {
                 file,
                 globs,
