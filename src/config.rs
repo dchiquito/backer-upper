@@ -1,20 +1,22 @@
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::collections::HashMap;
+use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
 /// A configuration for a single backup. A config file can have multiple Configs.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Config {
     pub globs: Vec<String>,
-    pub output: Option<PathBuf>,
     pub gpg_id: Option<String>,
+    pub host: Option<String>,
+    pub dir: String,
+    pub format: String,
+    pub interval: String,
+    pub copies: Option<usize>,
 }
 
 /// A collection of Configs. This is the format used for saving configs to a file.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ConfigCollection {
     #[serde(flatten)]
     pub configs: HashMap<String, Config>,
