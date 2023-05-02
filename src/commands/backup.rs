@@ -4,7 +4,7 @@ use std::process::Command;
 use crate::utils::run;
 
 pub fn backup(
-    globs: &Vec<String>,
+    globs: &[String],
     output: &Option<PathBuf>,
     gpg_id: &Option<String>,
 ) -> Result<(), clap::error::Error> {
