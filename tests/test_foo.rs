@@ -5,7 +5,6 @@ use serial_test::serial;
 
 use backer_upper::commands::backup::backup;
 use backer_upper::commands::restore::restore;
-use backer_upper::config::Config;
 use backer_upper::utils::run;
 
 fn root() -> PathBuf {
@@ -84,12 +83,7 @@ fn assert_no_files(files: &[&str]) {
 fn test_backup_restore_glob_star() -> Result<(), clap::error::Error> {
     setup_test_env();
     // backup all files
-    let config = Config {
-        globs: vec!["*".to_string()],
-        output: None,
-        gpg_id: None,
-    };
-    backup(&config)?;
+    backup(&["*".to_string()], &None, &None)?;
     sanitize_test_env();
     // restore all files
     restore(Path::new("/tmp/backup.tar.gz"), &None, &None)?;
@@ -102,12 +96,7 @@ fn test_backup_restore_glob_star() -> Result<(), clap::error::Error> {
 fn test_backup_restore_single_file() -> Result<(), clap::error::Error> {
     setup_test_env();
     // backup a single file
-    let config = Config {
-        globs: vec!["b.txt".to_string()],
-        output: None,
-        gpg_id: None,
-    };
-    backup(&config)?;
+    backup(&["b.txt".to_string()], &None, &None)?;
     sanitize_test_env();
     // restore all files
     restore(Path::new("/tmp/backup.tar.gz"), &None, &None)?;
@@ -121,12 +110,7 @@ fn test_backup_restore_single_file() -> Result<(), clap::error::Error> {
 fn test_backup_restore_single_file_from_glob_star() -> Result<(), clap::error::Error> {
     setup_test_env();
     // backup all files
-    let config = Config {
-        globs: vec!["*".to_string()],
-        output: None,
-        gpg_id: None,
-    };
-    backup(&config)?;
+    backup(&["*".to_string()], &None, &None)?;
     sanitize_test_env();
     // restore a single file
     restore(
@@ -144,12 +128,11 @@ fn test_backup_restore_single_file_from_glob_star() -> Result<(), clap::error::E
 fn test_backup_restore_explicit_output() -> Result<(), clap::error::Error> {
     setup_test_env();
     // backup a single file
-    let config = Config {
-        globs: vec!["dir/c.txt".to_string()],
-        output: Some(Path::new("/tmp/backer-upper-test-backup.tar.gz").into()),
-        gpg_id: None,
-    };
-    backup(&config)?;
+    backup(
+        &["dir/c.txt".to_string()],
+        &Some(Path::new("/tmp/backer-upper-test-backup.tar.gz").into()),
+        &None,
+    )?;
     sanitize_test_env();
     // restore all files
     restore(
@@ -167,15 +150,18 @@ fn test_backup_restore_explicit_output() -> Result<(), clap::error::Error> {
 fn test_backup_restore_encrypted() -> Result<(), clap::error::Error> {
     setup_test_env();
     // backup all files
-    let config = Config {
-        globs: vec!["*".to_string()],
-        output: None,
-        gpg_id: Some("test@chiquit.ooo".to_string()),
-    };
-    backup(&config)?;
+    backup(
+        &["*".to_string()],
+        &None,
+        &Some("test@chiquit.ooo".to_string()),
+    )?;
     sanitize_test_env();
     // restore all files
-    restore(Path::new("/tmp/backup.tar.gz.gpg"), &None, &config.gpg_id)?;
+    restore(
+        Path::new("/tmp/backup.tar.gz.gpg"),
+        &None,
+        &Some("test@chiquit.ooo".to_string()),
+    )?;
     assert_files(&["a.txt", "b.txt", "dir/c.txt", "dir/d.txt"]);
     Ok(())
 }
@@ -185,18 +171,17 @@ fn test_backup_restore_encrypted() -> Result<(), clap::error::Error> {
 fn test_backup_restore_encrypted_with_output() -> Result<(), clap::error::Error> {
     setup_test_env();
     // backup all files
-    let config = Config {
-        globs: vec!["*".to_string()],
-        output: Some(Path::new("/tmp/backer-upper-test-backup.tar.gz.gpg").into()),
-        gpg_id: Some("test@chiquit.ooo".to_string()),
-    };
-    backup(&config)?;
+    backup(
+        &["*".to_string()],
+        &Some(Path::new("/tmp/backer-upper-test-backup.tar.gz.gpg").into()),
+        &Some("test@chiquit.ooo".to_string()),
+    )?;
     sanitize_test_env();
     // restore all files
     restore(
         Path::new("/tmp/backer-upper-test-backup.tar.gz.gpg"),
         &None,
-        &config.gpg_id,
+        &Some("test@chiquit.ooo".to_string()),
     )?;
     assert_files(&["a.txt", "b.txt", "dir/c.txt", "dir/d.txt"]);
     Ok(())
