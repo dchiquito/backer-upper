@@ -6,14 +6,8 @@ use serial_test::serial;
 use backer_upper::commands::backup::backup;
 use backer_upper::commands::restore::restore;
 use backer_upper::config::Config;
+use backer_upper::utils::run;
 
-fn run(command: &mut Command) {
-    let output = command.output().unwrap();
-    eprint!("{}", String::from_utf8(output.stderr).unwrap());
-    if output.status.code() != Some(0) {
-        panic!("error running command {:?}", output.status.code());
-    }
-}
 fn root() -> PathBuf {
     Path::new("/tmp/backer-upper/").into()
 }

@@ -3,13 +3,7 @@ use std::process::Command;
 
 use clap::error::Error;
 
-fn run(command: &mut Command) {
-    let output = command.output().unwrap();
-    if output.status.code() != Some(0) {
-        eprint!("{}", String::from_utf8(output.stderr).unwrap());
-        panic!("error running command");
-    }
-}
+use crate::utils::run;
 
 pub fn restore(
     backup: &Path,

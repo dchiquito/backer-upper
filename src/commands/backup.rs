@@ -2,14 +2,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use crate::config::Config;
-
-fn run(command: &mut Command) {
-    let output = command.output().unwrap();
-    if !output.stderr.is_empty() {
-        eprint!("{}", String::from_utf8(output.stderr).unwrap());
-        panic!("error running command");
-    }
-}
+use crate::utils::run;
 
 pub fn backup(config: &Config) -> Result<(), clap::error::Error> {
     let output_option = config.output.as_ref().map(|pb| {
