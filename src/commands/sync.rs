@@ -85,7 +85,7 @@ fn filter_backups(files: &[(String, DateTime<Utc>)], format: &str) -> Vec<(Strin
     files
         .iter()
         .filter(|(name, time)| time_matches(name, time, format))
-        .map(|v| v.clone())
+        .cloned()
         .collect()
 }
 
