@@ -7,7 +7,7 @@ use log::{debug, trace};
 use regex::Regex;
 
 use crate::commands::backup::backup;
-use crate::config::read_config_file;
+use crate::config::{read_config_file, Config};
 use crate::utils::run;
 
 fn offset_by_interval<T: TimeZone>(now: DateTime<T>, interval: &str) -> DateTime<T> {
@@ -81,49 +81,92 @@ fn find_most_recent_matching(
         .cloned()
 }
 
+fn filter_backups(files: &[(String, DateTime<Utc>)], format: &str) -> Vec<(String, DateTime<Utc>)> {
+    files
+        .iter()
+        .filter(|(name, time)| time_matches(name, time, format))
+        .map(|v| v.clone())
+        .collect()
+}
+
+fn sync_config(name: &str, config: &Config) -> Result<(), Error> {
+    debug!("Syncing config {}: {:?}", name, config);
+
+    // Check for existing backups, remotely if necessary
+    let raw_ls;
+    if let Some(host) = &config.host {
+        raw_ls = run(Command::new("ssh").args([host, "ls", "-At", "--full-time", &config.dir]));
+    } else {
+        raw_ls = run(Command::new("ls").args(["-At", "--full-time", &config.dir]))
+    }
+    let existing_files = parse_ls(&raw_ls);
+
+    // Skip this backup if the last backup was too recent
+    let last_backup =
+        find_most_recent_matching(&existing_files, &config.format).map(|(_, time)| time);
+    let now = Utc::now();
+    if let Some(last_backup) = last_backup {
+        debug!("Last backup was at {}", last_backup);
+        if last_backup > offset_by_interval(now, &config.interval) {
+            debug!("Skipping backup");
+            return Ok(());
+        }
+    }
+
+    let filename = format!("{}", now.format(&config.format));
+    let destination = Path::new(&config.dir).join(&filename);
+    // Use a temporary file if we are uploading, otherwise use the destination
+    let output = if config.host.is_some() {
+        Path::new("/tmp/").join(&filename)
+    } else {
+        destination.clone()
+    };
+
+    // Run the backup
+    backup(&config.globs, &Some(output.clone()), &config.gpg_id)?;
+
+    // Copy the archive if there is a host specified
+    if let Some(host) = &config.host {
+        run(Command::new("scp").args([
+            output.into_os_string().to_str().unwrap(),
+            &format!(
+                "{}:{}",
+                &host,
+                destination.into_os_string().to_str().unwrap()
+            ),
+        ]));
+    }
+
+    // Delete redundant copies if necessary
+    if let Some(copies) = config.copies {
+        let files_to_remove: Vec<String> = filter_backups(&existing_files, &config.format)
+            .iter()
+            .skip(copies - 1)
+            .map(|(name, _)| {
+                Path::new(&config.dir)
+                    .join(name)
+                    .into_os_string()
+                    .into_string()
+                    .unwrap()
+            })
+            .collect();
+        debug!("Removing redundant backups {:?}", files_to_remove);
+        if let Some(host) = &config.host {
+            run(Command::new("ssh")
+                .args([host, "rm"])
+                .args(&files_to_remove));
+        } else {
+            run(Command::new("rm").args(&files_to_remove));
+        }
+    }
+    Ok(())
+}
+
 pub fn sync(file: &Path) -> Result<(), Error> {
     debug!("Syncing file {:?}", file);
     let configs = read_config_file(file);
     for (name, config) in configs.configs.iter() {
-        debug!("Syncing config {}: {:?}", name, config);
-        if config.host.is_some() {
-            let raw_ls = run(Command::new("ssh").args([
-                &config.host.clone().unwrap(),
-                "ls",
-                "-At",
-                "--full-time",
-            ]));
-            let existing_files = parse_ls(&raw_ls);
-            let last_backup =
-                find_most_recent_matching(&existing_files, &config.format).map(|(_, time)| time);
-            let now = Utc::now();
-            if let Some(last_backup) = last_backup {
-                debug!("Last backup was at {}", last_backup);
-                if last_backup > offset_by_interval(now, &config.interval) {
-                    debug!("Skipping backup");
-                    continue;
-                }
-            }
-
-            let filename = format!("{}", now.format(&config.format));
-            let destination = Path::new(&config.dir).join(&filename);
-            let output = if config.host.is_some() {
-                Path::new("/tmp/").join(&filename)
-            } else {
-                destination.clone()
-            };
-            backup(&config.globs, &Some(output.clone()), &config.gpg_id)?;
-            if let Some(host) = &config.host {
-                run(Command::new("scp").args([
-                    output.into_os_string().to_str().unwrap(),
-                    &format!(
-                        "{}:{}",
-                        &host,
-                        destination.into_os_string().to_str().unwrap()
-                    ),
-                ]));
-            }
-        }
+        sync_config(name, config)?;
     }
     Ok(())
 }
