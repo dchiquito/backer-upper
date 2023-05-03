@@ -10,22 +10,10 @@ pub mod sync;
 pub struct Cli {
     #[command(subcommand)]
     pub commands: Commands,
-
-    /// The repository the configuration files are stored in
-    #[arg(short, long)]
-    pub repo: Option<PathBuf>,
-
-    /// Run the command as root
-    #[arg(long)]
-    pub root: bool,
 }
 
 impl Cli {
     pub fn run_command(&self) -> Result<(), clap::error::Error> {
-        // if self.root {
-        //     with_env(&["CONFIGURATOR"]).unwrap();
-        // }
-        // let ctx = Context::new(&self.repo);
         match &self.commands {
             Commands::Backup {
                 globs,
@@ -44,24 +32,32 @@ impl Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Add/update configuration files to the repository
+    /// Back up files.
     Backup {
-        /// The configuration file to add/update
+        /// The files to back up.
         globs: Vec<String>,
-        ///
-        /// The repository the configuration files are stored in
+        /// The destination file. Defaults to /tmp/backup.tar.gz.
         #[arg(short, long)]
         output: Option<PathBuf>,
+        /// Optional. The id of the GPG key to use for encryption.
         #[arg(short, long)]
         gpg_id: Option<String>,
     },
+    /// Restore files from a backup.
     Restore {
+        /// The archive to restore from.
         file: PathBuf,
+        /// Optional. Specific files within the archive to restore.
         globs: Option<Vec<String>>,
+        /// Optional. The id of the GPG key used to encrypt the archive.
         #[arg(short, long)]
         gpg_id: Option<String>,
     },
+    /// Synchronize any number of backups according to a schedule.
+    ///
+    /// Consult the README for information on the file format.
     Sync {
+        /// The TOML file describing the backups.
         file: PathBuf,
     },
 }
