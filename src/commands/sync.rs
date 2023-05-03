@@ -1,8 +1,10 @@
-use chrono::{DateTime, Days, Duration, Months, TimeZone, Utc};
-use clap::error::Error;
-use regex::Regex;
 use std::path::Path;
 use std::process::Command;
+
+use chrono::{DateTime, Days, Duration, Months, TimeZone, Utc};
+use clap::error::Error;
+use log::{debug, trace};
+use regex::Regex;
 
 use crate::commands::backup::backup;
 use crate::config::read_config_file;
@@ -15,7 +17,8 @@ fn offset_by_interval<T: TimeZone>(now: DateTime<T>, interval: &str) -> DateTime
         .unwrap_or_else(|| panic!("invalid date string {}", interval));
     let count: u32 = captures[1].parse().unwrap();
     let unit: &str = &captures[2];
-    match unit {
+    let _now = now.clone(); // hack to sneak the value around the borrow
+    let offset = match unit {
         "M" | "month" | "months" => now - Months::new(count),
         "w" | "week" | "weeks" => now - Duration::weeks(count.into()),
         "d" | "day" | "days" => now - Days::new(count.into()),
@@ -23,7 +26,14 @@ fn offset_by_interval<T: TimeZone>(now: DateTime<T>, interval: &str) -> DateTime
         "m" | "minute" | "minutes" => now - Duration::minutes(count.into()),
         "s" | "second" | "seconds" => now - Duration::seconds(count.into()),
         _ => panic!("invalid time unit {}", unit),
-    }
+    };
+    debug!(
+        "Offset {:?} by {} to get {:?}",
+        &_now.clone(),
+        &(_now - offset.clone()),
+        &offset
+    );
+    offset
 }
 
 fn parse_ls(raw: &str) -> Vec<(String, DateTime<Utc>)> {
@@ -34,13 +44,31 @@ fn parse_ls(raw: &str) -> Vec<(String, DateTime<Utc>)> {
             (
                 captures[2].to_string(),
                 DateTime::parse_from_str(&captures[1], "%Y-%m-%d %H:%M:%S.%f %z")
-                    //2023-03-25 21:50:22.453741042 -0400
-                    // "1983 Apr 13 12:09:14.274 +0000", "%Y %b %d %H:%M:%S%.3f %z");
                     .unwrap()
                     .with_timezone(&Utc),
             )
         })
         .collect()
+}
+
+/// Test if a formatted file name could plausibly have been produced by the given format string and
+/// creation time. Because zipping and uploading the archive can take some time, all times up to an
+/// hour before the creation date are tested.
+fn time_matches(name: &str, time: &DateTime<Utc>, format: &str) -> bool {
+    trace!(
+        "Testing if {} matches expected {} within an hour",
+        name,
+        time.format(format)
+    );
+    let mut attempt = *time;
+    while attempt > *time - Duration::hours(1) {
+        if name == format!("{}", attempt.format(format)) {
+            return true;
+        }
+        attempt -= Duration::seconds(1);
+    }
+    trace!("No match found in the last hour");
+    false
 }
 
 fn find_most_recent_matching(
@@ -49,16 +77,15 @@ fn find_most_recent_matching(
 ) -> Option<(String, DateTime<Utc>)> {
     files
         .iter()
-        .find(|(name, time)| {
-            println!("{} {}", name, time.format(format));
-            name == &format!("{}", time.format(format))
-        })
+        .find(|(name, time)| time_matches(name, time, format))
         .cloned()
 }
 
 pub fn sync(file: &Path) -> Result<(), Error> {
+    debug!("Syncing file {:?}", file);
     let configs = read_config_file(file);
     for (name, config) in configs.configs.iter() {
+        debug!("Syncing config {}: {:?}", name, config);
         if config.host.is_some() {
             let raw_ls = run(Command::new("ssh").args([
                 &config.host.clone().unwrap(),
@@ -71,15 +98,15 @@ pub fn sync(file: &Path) -> Result<(), Error> {
                 find_most_recent_matching(&existing_files, &config.format).map(|(_, time)| time);
             let now = Utc::now();
             if let Some(last_backup) = last_backup {
+                debug!("Last backup was at {}", last_backup);
                 if last_backup > offset_by_interval(now, &config.interval) {
-                    println!("Skipping {}", name);
+                    debug!("Skipping backup");
                     continue;
                 }
             }
 
             let filename = format!("{}", now.format(&config.format));
             let destination = Path::new(&config.dir).join(&filename);
-            println!("Backing up {} to {}", name, filename);
             let output = if config.host.is_some() {
                 Path::new("/tmp/").join(&filename)
             } else {

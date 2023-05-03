@@ -1,9 +1,13 @@
+use log::{debug, error};
 use std::process::Command;
 
 pub fn run(command: &mut Command) -> String {
-    // println!("Running {:?}", command);
+    debug!("Running {:?}", command);
     let output = command.output().unwrap();
-    eprint!("{}", String::from_utf8(output.stderr).unwrap());
+    let err = String::from_utf8(output.stderr).unwrap();
+    if !err.is_empty() {
+        error!("{}", err);
+    }
     if output.status.code() != Some(0) {
         panic!("error running command {:?}", output.status.code());
     }

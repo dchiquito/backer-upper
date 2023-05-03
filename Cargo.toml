@@ -8,7 +8,9 @@ edition = "2021"
 [dependencies]
 chrono = "0.4.24"
 clap = { version = "4.2.4", features = ["derive"] }
+env_logger = "0.10.0"
 glob = "0.3.1"
+log = "0.4.17"
 regex = "1.8.1"
 serde = { version = "1.0.160", features = ["derive"] }
 toml = "0.7.3"
