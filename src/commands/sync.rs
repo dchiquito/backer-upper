@@ -123,7 +123,7 @@ fn sync_config(name: &str, config: &Config) -> Result<(), Error> {
     };
 
     // Run the backup
-    backup(&config.globs, &Some(output.clone()), &config.gpg_id)?;
+    backup(&config.globs, &output, &config.gpg_id)?;
 
     // Copy the archive if there is a host specified
     if let Some(host) = &config.host {

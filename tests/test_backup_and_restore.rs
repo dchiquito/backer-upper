@@ -83,7 +83,7 @@ fn assert_no_files(files: &[&str]) {
 fn test_backup_restore_glob_star() -> Result<(), clap::error::Error> {
     setup_test_env();
     // backup all files
-    backup(&["*".to_string()], &None, &None)?;
+    backup(&["*".to_string()], Path::new("/tmp/backup.tar.gz"), &None)?;
     sanitize_test_env();
     // restore all files
     restore(Path::new("/tmp/backup.tar.gz"), &None, &None)?;
@@ -96,7 +96,11 @@ fn test_backup_restore_glob_star() -> Result<(), clap::error::Error> {
 fn test_backup_restore_single_file() -> Result<(), clap::error::Error> {
     setup_test_env();
     // backup a single file
-    backup(&["b.txt".to_string()], &None, &None)?;
+    backup(
+        &["b.txt".to_string()],
+        Path::new("/tmp/backup.tar.gz"),
+        &None,
+    )?;
     sanitize_test_env();
     // restore all files
     restore(Path::new("/tmp/backup.tar.gz"), &None, &None)?;
@@ -110,7 +114,7 @@ fn test_backup_restore_single_file() -> Result<(), clap::error::Error> {
 fn test_backup_restore_single_file_from_glob_star() -> Result<(), clap::error::Error> {
     setup_test_env();
     // backup all files
-    backup(&["*".to_string()], &None, &None)?;
+    backup(&["*".to_string()], Path::new("/tmp/backup.tar.gz"), &None)?;
     sanitize_test_env();
     // restore a single file
     restore(
@@ -130,7 +134,7 @@ fn test_backup_restore_explicit_output() -> Result<(), clap::error::Error> {
     // backup a single file
     backup(
         &["dir/c.txt".to_string()],
-        &Some(Path::new("/tmp/backer-upper-test-backup.tar.gz").into()),
+        Path::new("/tmp/backer-upper-test-backup.tar.gz"),
         &None,
     )?;
     sanitize_test_env();
@@ -152,7 +156,7 @@ fn test_backup_restore_encrypted() -> Result<(), clap::error::Error> {
     // backup all files
     backup(
         &["*".to_string()],
-        &None,
+        Path::new("/tmp/backup.tar.gz.gpg"),
         &Some("test@chiquit.ooo".to_string()),
     )?;
     sanitize_test_env();
@@ -173,7 +177,7 @@ fn test_backup_restore_encrypted_with_output() -> Result<(), clap::error::Error>
     // backup all files
     backup(
         &["*".to_string()],
-        &Some(Path::new("/tmp/backer-upper-test-backup.tar.gz.gpg").into()),
+        Path::new("/tmp/backer-upper-test-backup.tar.gz.gpg"),
         &Some("test@chiquit.ooo".to_string()),
     )?;
     sanitize_test_env();

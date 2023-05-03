@@ -36,9 +36,9 @@ pub enum Commands {
     Backup {
         /// The files to back up.
         globs: Vec<String>,
-        /// The destination file. Defaults to /tmp/backup.tar.gz.
+        /// The destination file.
         #[arg(short, long)]
-        output: Option<PathBuf>,
+        output: PathBuf,
         /// Optional. The id of the GPG key to use for encryption.
         #[arg(short, long)]
         gpg_id: Option<String>,
