@@ -5,6 +5,8 @@ use serial_test::serial;
 
 use backer_upper::commands::backup::backup;
 use backer_upper::commands::restore::restore;
+use backer_upper::commands::sync::sync_config;
+use backer_upper::config::Config;
 use backer_upper::utils::run;
 
 fn root() -> PathBuf {
@@ -17,6 +19,9 @@ fn test_file(root: &Path, name: &str) {
 static mut GENKEYFILE: Option<PathBuf> = None;
 
 fn setup_test_env() {
+    // Enable logging
+    #![allow(unused_must_use)]
+    env_logger::try_init();
     // Locate the genkey file before changing cwd
     let genkeyfile;
     unsafe {
@@ -188,5 +193,75 @@ fn test_backup_restore_encrypted_with_output() -> Result<(), clap::error::Error>
         &Some("test@chiquit.ooo".to_string()),
     )?;
     assert_files(&["a.txt", "b.txt", "dir/c.txt", "dir/d.txt"]);
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn test_sync_and_restore() -> Result<(), clap::error::Error> {
+    setup_test_env();
+    std::fs::create_dir_all("/tmp/backer-upper-sync/").unwrap();
+    let backup = sync_config(
+        "test",
+        &Config {
+            globs: vec!["/tmp/backer-upper/*".to_string()],
+            gpg_id: Some("test@chiquit.ooo".to_string()),
+            host: None,
+            dir: "/tmp/backer-upper-sync/".to_string(),
+            format: "test_sync_%Y-%m-%d_%H:%M:%S.tar.gz.gpg".to_string(),
+            interval: "1 second".to_string(),
+            copies: None,
+        },
+    )?
+    .unwrap();
+    sanitize_test_env();
+    restore(&backup, &None, &Some("test@chiquit.ooo".to_string()))?;
+    assert_files(&["a.txt", "b.txt", "dir/c.txt", "dir/d.txt"]);
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn test_sync_redundant() -> Result<(), clap::error::Error> {
+    setup_test_env();
+    std::fs::create_dir_all("/tmp/backer-upper-sync/").unwrap();
+    let config = Config {
+        globs: vec!["/tmp/backer-upper/*".to_string()],
+        gpg_id: Some("test@chiquit.ooo".to_string()),
+        host: None,
+        dir: "/tmp/backer-upper-sync/".to_string(),
+        format: "test_redundant_sync_%Y-%m-%d_%H:%M:%S.tar.gz.gpg".to_string(),
+        // This test will fail if run multiple times within two seconds
+        interval: "2 seconds".to_string(),
+        copies: None,
+    };
+    let backup = sync_config("test", &config)?.unwrap();
+    assert!(backup.exists());
+    // Sync again, this one shouldn't need a new backup
+    assert_eq!(sync_config("test", &config)?, None);
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn test_sync_copies() -> Result<(), clap::error::Error> {
+    setup_test_env();
+    std::fs::create_dir_all("/tmp/backer-upper-sync/").unwrap();
+    let config = Config {
+        globs: vec!["/tmp/backer-upper/*".to_string()],
+        gpg_id: Some("test@chiquit.ooo".to_string()),
+        host: None,
+        dir: "/tmp/backer-upper-sync/".to_string(),
+        format: "test_sync_copies_%Y-%m-%d_%H:%M:%S.tar.gz.gpg".to_string(),
+        // Always run
+        interval: "0 seconds".to_string(),
+        copies: Some(1),
+    };
+    let backup_1 = sync_config("test", &config)?.unwrap();
+    assert!(backup_1.exists());
+    let backup_2 = sync_config("test", &config)?.unwrap();
+    assert!(backup_2.exists());
+    // The second backup should have cleaned up the first
+    assert!(!backup_1.exists());
     Ok(())
 }
