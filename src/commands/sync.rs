@@ -157,13 +157,15 @@ pub fn sync_config(name: &str, config: &Config) -> Result<Option<PathBuf>, Error
                     .unwrap()
             })
             .collect();
-        debug!("Removing redundant backups {:?}", files_to_remove);
-        if let Some(host) = &config.host {
-            run(Command::new("ssh")
-                .args([host, "rm"])
-                .args(&files_to_remove));
-        } else {
-            run(Command::new("rm").args(&files_to_remove));
+        if !files_to_remove.is_empty() {
+            debug!("Removing redundant backups {:?}", files_to_remove);
+            if let Some(host) = &config.host {
+                run(Command::new("ssh")
+                    .args([host, "rm"])
+                    .args(&files_to_remove));
+            } else {
+                run(Command::new("rm").args(&files_to_remove));
+            }
         }
     }
     Ok(Some(destination))

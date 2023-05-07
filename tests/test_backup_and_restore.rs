@@ -244,7 +244,7 @@ fn test_sync_redundant() -> Result<(), clap::error::Error> {
 
 #[test]
 #[serial]
-fn test_sync_copies() -> Result<(), clap::error::Error> {
+fn test_sync_one_copy() -> Result<(), clap::error::Error> {
     setup_test_env();
     std::fs::create_dir_all("/tmp/backer-upper-sync/").unwrap();
     let config = Config {
@@ -262,6 +262,33 @@ fn test_sync_copies() -> Result<(), clap::error::Error> {
     let backup_2 = sync_config("test", &config)?.unwrap();
     assert!(backup_2.exists());
     // The second backup should have cleaned up the first
+    assert!(!backup_1.exists());
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn test_sync_two_copies() -> Result<(), clap::error::Error> {
+    setup_test_env();
+    std::fs::create_dir_all("/tmp/backer-upper-sync/").unwrap();
+    let config = Config {
+        globs: vec!["/tmp/backer-upper/*".to_string()],
+        gpg_id: Some("test@chiquit.ooo".to_string()),
+        host: None,
+        dir: "/tmp/backer-upper-sync/".to_string(),
+        format: "test_sync_copies_%Y-%m-%d_%H:%M:%S.tar.gz.gpg".to_string(),
+        // Always run
+        interval: "0 seconds".to_string(),
+        copies: Some(2),
+    };
+    let backup_1 = sync_config("test", &config)?.unwrap();
+    assert!(backup_1.exists());
+    let backup_2 = sync_config("test", &config)?.unwrap();
+    assert!(backup_2.exists());
+    assert!(backup_1.exists());
+    let backup_3 = sync_config("test", &config)?.unwrap();
+    assert!(backup_3.exists());
+    assert!(backup_2.exists());
     assert!(!backup_1.exists());
     Ok(())
 }
