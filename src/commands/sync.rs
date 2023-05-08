@@ -135,6 +135,7 @@ pub fn sync_config(name: &str, config: &Config) -> Result<Option<PathBuf>, Error
     // Copy the archive if there is a host specified
     if let Some(host) = &config.host {
         run(Command::new("scp").args([
+            "-O",
             output.into_os_string().to_str().unwrap(),
             &format!(
                 "{}:{}",
